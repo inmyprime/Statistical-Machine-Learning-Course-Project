@@ -1,5 +1,6 @@
 # Statistical-Machine-Learning-Course-Project
 Peer-graded Assignment: Prediction Assignment Writeup
+
 Author: Hong Xu
 
 This repository contains the following three files:
