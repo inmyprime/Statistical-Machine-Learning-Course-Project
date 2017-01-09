@@ -1,0 +1,118 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Hong Xu"
+date: "2017年1月10日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+
+## Getting Data
+
+```{r}
+suppressPackageStartupMessages(library(caret))
+suppressPackageStartupMessages(library(randomForest))
+
+if(!file.exists("./data")){dir.create("./data")}
+trainingDataUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testDataUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+trainingFileName <- "./data/pml-training.csv"
+testFileName <- "./data/pml-test.csv"
+if(!file.exists(trainingFileName)) {
+    download.file(trainingDataUrl, destfile=trainingFileName)
+}
+if(!file.exists(testFileName)) {
+    download.file(testDataUrl, destfile=testFileName)
+}
+
+training <- read.csv(trainingFileName, na.strings=c("NA", ""))
+test <- read.csv(testFileName, na.strings=c("NA", ""))
+```
+
+## Cleaning Data
+
+Remove the predictors with mssing values.
+
+```{r}
+training <- training[, colSums(is.na(training))==0]
+test <- test[, colSums(is.na(test))==0]
+```
+
+After checking the names and values of the columns using *head(training)*, I decide to remove the first seven columns, since they are irrelevant and non-numeric and therefore, of little influence on predication.
+
+```{r}
+training <- training[, -c(1:7)]
+test <- test[, -c(1:7)]
+```
+
+## Data Partitioning
+
+Now, we split the training set into two partition, training set and validation set.
+
+```{r}
+set.seed(1234)
+inTrain <- createDataPartition(training$classe, p = 0.7, list = FALSE)
+train <- training[inTrain, ]
+valid <- training[-inTrain, ]
+```
+
+## Cross Validation
+
+We use 5-fold cross validation, which is a compromise of accuracy and efficiency on my computer.
+
+```{r}
+fitControl <- trainControl(method='cv', number = 5)
+```
+
+
+## Model Training
+
+My first attempt is random forest method, since as far as I know, it is a very good classification algorithm. Fortunately, it gives me a prediction result which is good enough, so I don't need to try other algorithms. I expect the out of sample error is low and should be below 3%.
+
+```{r}
+fitModel <- randomForest(classe ~ ., data = train, importance = FALSE, trControl = fitControl)
+fitModel
+```
+
+## Assessing Out of Sample Error
+
+```{r}
+pred <- predict(fitModel, valid)
+confMat <- confusionMatrix(valid$classe, pred)
+confMat
+```
+
+The accuracy is sufficiently good.
+
+```{r}
+confMat$overall[1]
+```
+
+The out of sample error rate is very low, which is what I expected.
+
+## Predicting the Test Set
+
+Use my prediction model to predict 20 different test cases
+
+```{r}
+predict(fitModel, test)
+```
